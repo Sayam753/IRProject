@@ -151,8 +151,8 @@ class GraphNode():
         self.paper = paper 
         self.num_citations = num_citations
         self.num_references = num_references
-        self.citation_childen = None
-        self.reference_childen = None
+        self.citation_children = None
+        self.reference_children = None
     
     def is_reference_leaf(self):
          return self.paper['numReferences'] == 0
@@ -162,9 +162,26 @@ class GraphNode():
     
     def get_citation_children(self):
         if not self.is_citation_leaf():
-            self.citation_childen = self.paper.get_top_k_citations_information(self.num_citations)
+            self.citation_children = self.paper.get_top_k_citations_information(self.num_citations)
 
     def get_reference_children(self):
         if not self.is_reference_leaf():
-            self.reference_childen = self.paper.get_top_k_references_information(self.num_references)
-           
+            self.reference_children = self.paper.get_top_k_references_information(self.num_references)
+
+    def get_citation_children_metadata(self):
+        essential_metadata_keys = ['abstract', 'arxivId', 'numCitations', 'title']
+        citation_children_metadata = self.paper.get_top_k_citations_metadata(self.num_citations)
+        
+        for idx, child in enumerate(citation_children_metadata):
+            citation_children_metadata[idx] = {key:val for key, val in child.paper.items() if key in essential_metadata_keys}
+        
+        return citation_children_metadata
+
+    def get_reference_children_metadata(self):
+        essential_metadata_keys = ['abstract', 'arxivId', 'numReferences', 'title']
+        reference_children_metadata = self.paper.get_top_k_references_metadata(self.num_references)
+
+        for idx, child in enumerate(reference_children_metadata):
+            reference_children_metadata[idx] = {key:val for key, val in child.paper.items() if key in essential_metadata_keys}
+
+        return reference_children_metadata
