@@ -18,7 +18,7 @@ class ArXivPaper():
     def __init__(self, paper):
         self.paper = paper
 
-        self.essential_metadata_keys = {'abstract', 'arxivId', 'authors', 'citations',
+        self.essential_metadata_keys = {'abstract', 'arxivId', 'authors', 'citations', 'influentialCitationCount',
                                         'doi', 'fieldsOfStudy', 'paperId', 'references',
                                         'title', 'topics', 'url', 'venue', 'year'}
 
@@ -27,6 +27,8 @@ class ArXivPaper():
 
         self.check_paper()
         self.check_relevant_keys()
+        self.discard_non_influential_citations()
+        self.discard_non_influential_references()
 
     def check_paper(self):
         if isinstance(self.paper, str):
@@ -46,6 +48,12 @@ class ArXivPaper():
 
         self.paper['numCitations'] = len(self.paper['citations'])
         self.paper['numReferences'] = len(self.paper['references'])
+
+    def discard_non_influential_citations(self):
+        self.paper['citations'] = list(filter(lambda i: i['isInfluential'] is True, self.paper['citations']))
+
+    def discard_non_influential_references(self):
+        self.paper['references'] = list(filter(lambda i: i['isInfluential'] is True, self.paper['references']))
 
     def __getitem__(self, key):
         return self.paper[key]
@@ -135,3 +143,4 @@ class ArXivPaper():
             citation_papers[i] = ArXivPaper(citations[i]['arxivId'])
 
         return citation_papers
+
