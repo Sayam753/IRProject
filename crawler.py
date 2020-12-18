@@ -147,13 +147,16 @@ class ArXivPaper():
     
 
 class GraphNode():
-    def __init__(self, paper:ArXivPaper, num_citations:int=1, num_references:int=1):
+    def __init__(self, paper:ArXivPaper, num_citations:int=10, num_references:int=10):
         self.paper = paper 
         self.num_citations = num_citations
         self.num_references = num_references
         self.citation_children = None
         self.reference_children = None
     
+    def __repr__(self):
+        return self.paper.__repr__()
+
     def is_reference_leaf(self):
          return self.paper['numReferences'] == 0
 
@@ -185,3 +188,28 @@ class GraphNode():
             reference_children_metadata[idx] = {key:val for key, val in child.paper.items() if key in essential_metadata_keys}
 
         return reference_children_metadata
+
+class Graph():
+    def __init__(self, root:GraphNode):
+        self.root = root
+        self.citation_branch = []
+        self.reference_branch = []
+
+    def get_root_citations(self):
+        return self.root.get_citation_children_metadata()
+
+    def get_root_references(self):
+        return self.root.get_reference_children_metadata()
+
+    def build_citations_subtree(self, arxiv_idx:str):
+        node = GraphNode(ArXivPaper(arxiv_idx))
+        self.citation_branch.append(node)
+        return node.get_citation_children_metadata()
+
+    def build_references_subtree(self, arxiv_idx:str):
+        node = GraphNode(ArXivPaper(arxiv_idx))
+        self.references_branch.append(node)
+        return node.get_reference_children_metadata()
+
+    
+    
