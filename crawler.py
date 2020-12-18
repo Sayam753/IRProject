@@ -9,7 +9,7 @@ class SemanticScholarMetaDataExtractor():
     def get_response(self, paper_id):
         paper_url = self.API_ID+paper_id
         return urllib.request.urlopen(paper_url)
-
+    
     def get_data_json(self, paper_id):
         response = self.get_response(paper_id)
         return json.loads(response.read())
@@ -24,48 +24,54 @@ class ArXivPaper():
 
         self.representational_info_keys = ['abstract', 'authors', 'url', 'year',
                                            'fieldsOfStudy', 'numCitations', 'venue', 'numReferences']
-
+        
         self.check_paper()
         self.check_relevant_keys()
         self.discard_non_influential_citations()
         self.discard_non_influential_references()
         self.discard_none_arxiv_references()
         self.discard_none_arxiv_citations()
+        self.set_num_references()
+        self.set_num_citations()
 
     def check_paper(self):
         if isinstance(self.paper, str):
             warnings.warn("Paper not present in memory. Extracting Paper MetaData from Semantic Scholar!")
             metadata_extractor = SemanticScholarMetaDataExtractor()
             self.paper = metadata_extractor.get_data_json(self.paper)
-
+        
         elif not isinstance(self.paper, dict):
             raise TypeError("Paper must be a Dict or an Arxiv Id")
-
+    
     def check_relevant_keys(self):
         missing_keys = self.essential_metadata_keys.difference(self.paper.keys())
         if not missing_keys == set():
             error_message = "The following essential keys are missing from the paper: " + \
                             ", ".join(missing_keys)
             raise KeyError(error_message)
-
-        self.paper['numCitations'] = len(self.paper['citations'])
-        self.paper['numReferences'] = len(self.paper['references'])
+        
 
     def discard_non_influential_citations(self):
         self.paper['citations'] = list(filter(lambda i: i['isInfluential'] is True, self.paper['citations']))
 
     def discard_none_arxiv_references(self):
-        self.paper['references'] = list(filter(lambda i: i['arxivId'] is not None, self.paper['references']))
+        self.paper['references'] = list(filter(lambda i: i['arxivId'] is not None, self.paper['references'])) 
 
     def discard_none_arxiv_citations(self):
         self.paper['citations'] = list(filter(lambda i: i['arxivId'] is not None, self.paper['citations']))
 
     def discard_non_influential_references(self):
-        self.paper['references'] = list(filter(lambda i: i['isInfluential'] is True, self.paper['references']))
+        self.paper['references'] = list(filter(lambda i: i['isInfluential'] is True, self.paper['references'])) 
+
+    def set_num_references(self):
+        self.paper['numReferences'] = len(self.paper['references'])
+
+    def set_num_citations(self):
+        self.paper['numCitations'] = len(self.paper['citations'])
 
     def __getitem__(self, key):
         return self.paper[key]
-
+    
     def __repr__(self):
         repr = f"Paper Title: {self.__getitem__('title')} \n\n"
         for idx, key in enumerate(self.representational_info_keys):
@@ -82,7 +88,7 @@ class ArXivPaper():
                 continue
             repr += f"{idx+1}) {key}: {self.__getitem__(key)} \n\n"
         return(repr)
-
+    
     def get_top_k_citations_information(self, k:int):
         if k > self.__getitem__('numCitations'):
              warnings.warn(f"Total citations are {self.__getitem__('numCitations')}. Retrieving all citations")
@@ -95,7 +101,7 @@ class ArXivPaper():
 
         i=0
         while i < k:
-            citation = all_citations[i]
+            citation = all_citations[i]        
             citation = {key:val for key, val in citation.items() if key in info_keys}
             citations.append(citation)
             i+=1
@@ -138,4 +144,27 @@ class ArXivPaper():
             citation_papers.append(ArXivPaper(citations[i]['arxivId']))
 
         return citation_papers
+    
 
+class GraphNode():
+    def __init__(self, paper:ArXivPaper, num_citations:int=1, num_references:int=1):
+        self.paper = paper 
+        self.num_citations = num_citations
+        self.num_references = num_references
+        self.citation_childen = None
+        self.reference_childen = None
+    
+    def is_reference_leaf(self):
+         return self.paper['numReferences'] == 0
+
+    def is_citation_leaf(self):
+         return self.paper['numCitations'] == 0
+    
+    def get_citation_children(self):
+        if not self.is_citation_leaf():
+            self.citation_childen = self.paper.get_top_k_citations_information(self.num_citations)
+
+    def get_reference_children(self):
+        if not self.is_reference_leaf():
+            self.reference_childen = self.paper.get_top_k_references_information(self.num_references)
+           
